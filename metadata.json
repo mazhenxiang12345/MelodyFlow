@@ -1,0 +1,5 @@
+{
+  "name": "MelodyFlow PWA",
+  "description": "A professional-grade local music player PWA with offline support, library management, and immersive UI.",
+  "requestFramePermissions": []
+}
