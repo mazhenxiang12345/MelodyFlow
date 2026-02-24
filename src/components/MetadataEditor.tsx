@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { db } from '../db';
 import { Song } from '../types';
-import { X, Save, Image as ImageIcon, Upload } from 'lucide-react';
+import { X, Save, Image as ImageIcon, Upload, Info } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 interface MetadataEditorProps {
@@ -23,6 +23,14 @@ export default function MetadataEditor({ song, onClose }: MetadataEditorProps) {
   const handleSave = async () => {
     await db.songs.update(song.id!, formData);
     onClose();
+  };
+
+  const formatSize = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,22 +126,45 @@ export default function MetadataEditor({ song, onClose }: MetadataEditorProps) {
               placeholder="[00:12.34] Lyric line..."
             />
           </div>
+
+          <div className="mt-4 p-4 bg-white/5 rounded-xl border border-white/10">
+            <div className="flex items-center gap-2 mb-4">
+              <Info className="w-4 h-4 text-emerald-500" />
+              <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">{t.fileInfo}</h3>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-zinc-500 font-bold uppercase">{t.format}</span>
+                <span className="text-sm font-mono text-zinc-300 uppercase">{song.format}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-zinc-500 font-bold uppercase">{t.bitrate}</span>
+                <span className="text-sm font-mono text-zinc-300">{song.bitrate ? `${Math.round(song.bitrate / 1000)} kbps` : 'Unknown'}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-zinc-500 font-bold uppercase">{t.fileSize}</span>
+                <span className="text-sm font-mono text-zinc-300">{formatSize(song.file.size)}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="p-6 bg-black/40 border-t border-white/10 flex justify-end gap-4 flex-shrink-0">
-          <button 
-            onClick={onClose}
-            className="px-6 py-2 text-sm font-bold hover:text-white transition-colors"
-          >
-            {t.cancel}
-          </button>
-          <button 
-            onClick={handleSave}
-            className="px-8 py-2 bg-emerald-500 text-black rounded-full text-sm font-bold hover:scale-105 transition-transform flex items-center gap-2"
-          >
-            <Save className="w-4 h-4" />
-            {t.save}
-          </button>
+        <div className="p-6 bg-black/40 border-t border-white/10 flex justify-end items-center gap-4 flex-shrink-0">
+          <div className="flex gap-4">
+            <button 
+              onClick={onClose}
+              className="px-6 py-2 text-sm font-bold hover:text-white transition-colors"
+            >
+              {t.cancel}
+            </button>
+            <button 
+              onClick={handleSave}
+              className="px-8 py-2 bg-emerald-500 text-black rounded-full text-sm font-bold hover:scale-105 transition-transform flex items-center gap-2"
+            >
+              <Save className="w-4 h-4" />
+              {t.save}
+            </button>
+          </div>
         </div>
       </div>
     </div>

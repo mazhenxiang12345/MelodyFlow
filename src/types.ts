@@ -13,6 +13,8 @@ export interface Song {
   file: Blob;
   addedAt: number;
   isFavorite: boolean;
+  deletedAt?: number;
+  lyricOffset?: number; // in seconds, positive means lyrics are late, negative means lyrics are early
 }
 
 export interface Playlist {

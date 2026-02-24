@@ -7,8 +7,8 @@ export class MusicDatabase extends Dexie {
 
   constructor() {
     super('MusicDatabase');
-    this.version(3).stores({
-      songs: '++id, title, artist, album, isFavorite, addedAt',
+    this.version(5).stores({
+      songs: '++id, title, artist, album, isFavorite, addedAt, deletedAt, lyricOffset',
       playlists: '++id, name, songIds, createdAt'
     });
   }

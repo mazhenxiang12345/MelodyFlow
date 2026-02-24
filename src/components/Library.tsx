@@ -9,7 +9,7 @@ import {
   Play, MoreHorizontal, Heart, Clock3, 
   Music, Upload, Filter, Search as SearchIcon,
   ChevronRight, PlusSquare, Volume2, ArrowUpDown,
-  CheckSquare, Square, Trash2, X
+  CheckSquare, Square, Trash2, X, LocateFixed
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -55,9 +55,9 @@ export default function Library({ view }: LibraryProps) {
 
   const songs = useLiveQuery(async () => {
     if (view === 'favorites') {
-      return await db.songs.filter(s => !!s.isFavorite).toArray();
+      return await db.songs.filter(s => !!s.isFavorite && !s.deletedAt).toArray();
     }
-    return await db.songs.toCollection().reverse().sortBy('addedAt');
+    return await db.songs.filter(s => !s.deletedAt).reverse().sortBy('addedAt');
   }, [view]);
 
   const groupedSongs = useMemo<Record<string, Song[]> | null>(() => {
@@ -164,6 +164,19 @@ export default function Library({ view }: LibraryProps) {
     }
   };
 
+  const scrollToCurrentSong = () => {
+    if (!currentSong?.id) return;
+    const element = document.getElementById(`song-${currentSong.id}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Add a brief highlight effect
+      element.classList.add('bg-emerald-500/20');
+      setTimeout(() => {
+        element.classList.remove('bg-emerald-500/20');
+      }, 2000);
+    }
+  };
+
   const toggleSongSelection = (songId: number) => {
     const newSelection = new Set(selectedSongIds);
     if (newSelection.has(songId)) {
@@ -191,7 +204,7 @@ export default function Library({ view }: LibraryProps) {
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedSongIds) as number[];
     removeSongs(ids);
-    await db.songs.bulkDelete(ids);
+    await db.songs.where('id').anyOf(ids).modify({ deletedAt: Date.now() });
     setIsMultiSelectMode(false);
     setSelectedSongIds(new Set());
   };
@@ -199,6 +212,52 @@ export default function Library({ view }: LibraryProps) {
   return (
     <div {...getRootProps()} className="flex-1 flex flex-col min-h-0 relative">
       <input {...getInputProps()} />
+
+      {/* Bulk Action Bar (Top) */}
+      {isMultiSelectMode && selectedSongIds.size > 0 && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-full px-2 py-2 shadow-2xl z-[70] flex items-center gap-2 animate-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-2 px-4 border-r border-white/10">
+            <span className="text-sm font-black text-emerald-500">{selectedSongIds.size}</span>
+            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{t.selected}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {view === 'favorites' ? (
+              <button 
+                onClick={handleBulkUnlike}
+                className="flex items-center gap-2 px-6 py-2.5 bg-white/5 hover:bg-white/10 rounded-full text-sm font-bold text-white transition-all active:scale-95"
+              >
+                <Heart className="w-4 h-4" />
+                {t.bulkUnlike}
+              </button>
+            ) : (
+              <button 
+                onClick={handleBulkLike}
+                className="flex items-center gap-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-400 rounded-full text-sm font-black text-black transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+              >
+                <Heart className="w-5 h-5 fill-current" />
+                {t.bulkLike}
+              </button>
+            )}
+            <button 
+              onClick={handleBulkDelete}
+              className="flex items-center justify-center w-10 h-10 bg-white/5 hover:bg-red-500/20 hover:text-red-500 rounded-full text-zinc-400 transition-all active:scale-95"
+              title={t.bulkDelete}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+            <div className="w-px h-6 bg-white/10 mx-1" />
+            <button 
+              onClick={() => {
+                setIsMultiSelectMode(false);
+                setSelectedSongIds(new Set());
+              }}
+              className="w-10 h-10 flex items-center justify-center text-zinc-500 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Header */}
       <div className="p-4 md:p-8 pb-4 flex flex-col gap-4 md:gap-6 bg-gradient-to-b from-zinc-800/50 to-transparent">
@@ -262,6 +321,17 @@ export default function Library({ view }: LibraryProps) {
                 className="w-full bg-white/10 border-none rounded-full py-1.5 md:py-2 pl-9 md:pl-10 pr-4 text-xs md:text-sm focus:ring-2 focus:ring-white/20 transition-all outline-none"
               />
             </div>
+            
+            {currentSong && filteredSongs.some(s => s.id === currentSong.id) && (
+              <button 
+                onClick={scrollToCurrentSong}
+                className="p-2 bg-white/10 text-zinc-400 hover:text-white rounded-full transition-all"
+                title="Locate current song"
+              >
+                <LocateFixed className="w-5 h-5" />
+              </button>
+            )}
+
             <button 
               onClick={() => {
                 setIsMultiSelectMode(!isMultiSelectMode);
@@ -349,7 +419,15 @@ export default function Library({ view }: LibraryProps) {
                 </button>
                 {showSortMenu && (
                   <div className="absolute top-full right-0 mt-2 bg-zinc-900 border border-white/10 rounded-xl py-2 w-40 shadow-2xl z-50">
-                    <p className="px-4 py-1 text-[8px] text-zinc-500 uppercase tracking-widest font-bold">{t.sortBy}</p>
+                    <div className="flex items-center justify-between px-4 py-1">
+                      <p className="text-[8px] text-zinc-500 uppercase tracking-widest font-bold">{t.sortBy}</p>
+                      <button 
+                        onClick={() => setShowSortMenu(false)}
+                        className="text-zinc-500 hover:text-white transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
                     <button
                       onClick={() => {
                         setSortBy('added');
@@ -383,6 +461,7 @@ export default function Library({ view }: LibraryProps) {
               {filteredSongs?.map((song, index) => (
                 <div 
                   key={song.id}
+                  id={`song-${song.id}`}
                   onClick={() => {
                     if (isMultiSelectMode) {
                       toggleSongSelection(song.id!);
@@ -490,51 +569,6 @@ export default function Library({ view }: LibraryProps) {
           </div>
         )}
       </div>
-
-      {/* Bulk Action Bar */}
-      {isMultiSelectMode && selectedSongIds.size > 0 && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-zinc-900 border border-white/10 rounded-2xl px-6 py-3 shadow-2xl z-[60] flex items-center gap-6 animate-in slide-in-from-bottom-4">
-          <div className="flex items-center gap-2 pr-4 border-r border-white/10">
-            <span className="text-sm font-black text-emerald-500">{selectedSongIds.size}</span>
-            <span className="text-xs text-zinc-400 font-bold uppercase tracking-widest">{t.songs}</span>
-          </div>
-          <div className="flex items-center gap-4">
-            {view === 'favorites' ? (
-              <button 
-                onClick={handleBulkUnlike}
-                className="flex items-center gap-2 text-xs font-bold text-zinc-400 hover:text-white transition-colors"
-              >
-                <Heart className="w-4 h-4" />
-                {t.bulkUnlike}
-              </button>
-            ) : (
-              <button 
-                onClick={handleBulkLike}
-                className="flex items-center gap-2 text-xs font-bold text-zinc-400 hover:text-emerald-500 transition-colors"
-              >
-                <Heart className="w-4 h-4" />
-                {t.bulkLike}
-              </button>
-            )}
-            <button 
-              onClick={handleBulkDelete}
-              className="flex items-center gap-2 text-xs font-bold text-zinc-400 hover:text-red-500 transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-              {t.bulkDelete}
-            </button>
-            <button 
-              onClick={() => {
-                setIsMultiSelectMode(false);
-                setSelectedSongIds(new Set());
-              }}
-              className="p-1 text-zinc-500 hover:text-white transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Drag Overlay */}
       {isDragActive && (

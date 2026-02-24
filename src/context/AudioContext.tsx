@@ -23,6 +23,7 @@ interface AudioContextType {
   nextSong: (manual?: boolean) => void;
   prevSong: () => void;
   removeSongs: (ids: number[]) => void;
+  updateCurrentSong: (song: Song) => void;
   queue: Song[];
   setQueue: (songs: Song[]) => void;
   sleepTimer: number | null; // minutes remaining
@@ -235,13 +236,24 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateCurrentSong = (song: Song) => {
+    setCurrentSong(song);
+    // Also update in queue
+    setQueue(prev => prev.map(s => s.id === song.id ? song : s));
+  };
+
+  useEffect(() => {
+    (window as any).updateCurrentSong = updateCurrentSong;
+    return () => { delete (window as any).updateCurrentSong; };
+  }, [currentSong, queue]);
+
   return (
     <AudioContext.Provider value={{
       currentSong, isPlaying, progress, duration, volume, playbackRate, abRepeat,
       isShuffle, repeatMode,
       playSong, togglePlay, seek, setVolume, setPlaybackRate, setABRepeat,
       toggleShuffle, toggleRepeat, toggleCurrentFavorite,
-      nextSong, prevSong, removeSongs, queue, setQueue,
+      nextSong, prevSong, removeSongs, updateCurrentSong, queue, setQueue,
       sleepTimer, setSleepTimer
     }}>
       {children}

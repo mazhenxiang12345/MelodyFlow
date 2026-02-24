@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, 
   ChevronDown, Heart, MoreHorizontal, Shuffle, 
-  Repeat, Gauge, Repeat1, Mic2, ListMusic
+  Repeat, Gauge, Repeat1, ListMusic
 } from 'lucide-react';
+import { LyricsIcon, ABIcon } from './Icons';
 import { useAudio } from '../context/AudioContext';
 import { useLanguage } from '../context/LanguageContext';
 import { clsx, type ClassValue } from 'clsx';
@@ -213,7 +214,7 @@ export default function FullscreenPlayer({ onClose, onEditMetadata }: Fullscreen
             onClick={handleLyricsClick}
             className="p-1.5 md:p-2 text-white/40 hover:text-white transition-colors"
           >
-            <Mic2 className="w-5 h-5 md:w-6 md:h-6" />
+            <LyricsIcon className="w-5 h-5 md:w-6 md:h-6" />
           </button>
           
           <div className="relative">
@@ -248,11 +249,11 @@ export default function FullscreenPlayer({ onClose, onEditMetadata }: Fullscreen
           <button 
             onClick={toggleAB}
             className={cn(
-              "transition-colors flex flex-col items-center",
+              "transition-colors flex flex-col items-center gap-1",
               abRepeat.active ? "text-emerald-500" : "text-white/40 hover:text-white"
             )}
           >
-            <Repeat1 className="w-4 h-4 md:w-5 md:h-5" />
+            <ABIcon active={abRepeat.active} />
             <span className="text-[6px] md:text-[8px] font-bold uppercase">
               {abRepeat.start !== null && abRepeat.end === null ? t.setB : t.abRepeat}
             </span>
